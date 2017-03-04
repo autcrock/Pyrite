@@ -1,0 +1,159 @@
+/* Simple crystal growth program, diffuses components around a cubic
+   lattice. No thermodynamics involved.
+   Parent program is growth.fth a FORTH version. */
+
+#include <stdlib.h>
+
+/* Shorthand access */
+#define AT	   [.] [.] [.]
+#define ATXP       [. + 1] [.] [.]
+#define ATXM	   [. - 1] [.] [.]
+#define ATYP       [.] [. + 1] [.]
+#define ATYM	   [.] [. - 1] [.]
+#define ATZP  	   [.] [.] [. + 1]
+#define ATZM	   [.] [.] [. - 1]
+#define ATXPYP	   [. + 1] [. + 1] [.]
+#define ATXPYM	   [. + 1] [. - 1] [.]
+
+#define SIDE       128
+#define COMPONENTS 5
+
+#define REACTED	 20
+#define SOLVENT 0
+#define ACPT 1
+#define RSOLVENT (SOLVENT + REACTED)
+#define RACPT (ACPT + REACTED)
+#define BCPT 2
+#define RBCPT (BCPT + REACTED)
+
+shape [SIDE] [SIDE] [SIDE] cube;
+
+int:cube c1, c2;
+
+int NumberOfIons, /* Number of Ions */
+    SPlusA, /* Solvent + Ion A */
+    SToA, /* Ratio of Solvent to A */
+    SToB, /* Ratio of Solvent to B */
+    Suitable, /* contents of new cell */
+    OKvar, /* the value of the reaction candidate + 10 */
+    NumberOfLooks; /* how many times should random-look look */
+
+/* Return a cube shape seeded in the appropriate concentrations with
+   component A component B and solvent molecules */
+
+/*int:cube RandomIonPut(int:cube c, int ca, int cb) {
+    int capb, i, j, k, a, b, s;
+
+    with (cube) {
+    capb = ca + cb;
+    c = prand();
+    a = b = s = 0;
+
+    for (i = 0; i < SIDE; i++)
+        for (j = 0; j < SIDE; j++)
+           for (k = 0; k < SIDE; k++)
+            {
+                if (([i] [j] [k] c % 100) < ca)
+                {
+                    ++a;
+                    [i] [j] [k] c = ACPT;
+                }
+                else
+                    if (([i] [j] [k] c % 100) < capb)
+                    {
+                        ++b;
+                        [i] [j] [k] c = BCPT;
+                    }
+                    else
+                    {
+                        ++s;
+                        [i] [j] [k] c = SOLVENT;
+                    }
+            }
+   printf("Cpt A : %d; Cpt B : %d; Solvent : %d; Tot : %d", a, b, s,
+a+b+s);
+   return c;
+   } } */
+
+int:cube RandomIonPut(int:cube c, int ca, int cb) {
+    int:cube c1;
+
+    with (cube)
+    {
+        c1 = prand() % 100;
+        where (c1 < ca)
+            c = ACPT;
+        where ((c1 >= ca) && (c1 < (ca + cb)))
+            c = BCPT;
+        where (c1 >= (ca + cb))
+            c = SOLVENT;
+        return c;
+    } }
+
+
+/* return a random integer constrained to lie between 0 and n-1 */
+
+int:cube ConRandom(int:cube c, int n) {
+    with (cube)
+    {
+        srand(42);
+        c = prand();
+        return c % n;
+    } }
+
+
+/* Display the values of lattice nodes in the zth plane,
+   from x1 to x2, and y1 to y2 inclusive.
+   Checks for bounds.  */
+
+void ZPlane(int:cube c, int x1, int x2, int y1, int y2, int z) {
+     int i, j;
+     if (x1 < 0) x1 = 0;
+     if (x1 >= SIDE) x1 = SIDE-1;
+     if (x2 < 0) x2 = 0;
+     if (x2 >= SIDE) x2 = SIDE-1;
+     if (y1 < 0) y1 = 0;
+     if (y1 >= SIDE) y1 = SIDE-1;
+     if (y2 < 0) y2 = 0;
+     if (y2 >= SIDE) y2 = SIDE-1;
+
+     for (i=x1; i<=x2; i++)
+        {
+            for (j=y1; j<=y2; j++)
+                printf("%d", [i] [j] [z] c);
+            printf("\n");
+        } }
+
+main() {
+    with (cube)
+    {
+        c1 = RandomIonPut(c1, 5, 5);
+ /* c1 = ConRandom(c1, COMPONENTS);*/
+        printf("Some elements are:\n");
+        ZPlane(c1, 0, 10, 0, 10, 0);
+    } }
+
+OkReact(int:cube c)
+{
+    with (cube)
+    {
+    where (c == ACPT)
+	    {
+		where (((ATXP c == BCPT) || (ATXP c == RBCPT))
+			&& (ATYP c != ACPT) && (ATYM c != ACPT)
+			&& (ATZP c != ACPT) && (ATYM c != ACPT)
+			&& (ATXP c != ACPT))
+			AT c == RACPT;
+		where ((ATXM c == BCPT) || (ATXM c == RBCPT))
+			AT c == RACPT;
+		where ((ATYP c == BCPT) || (ATYP c == RBCPT))
+			AT c == RACPT;
+		where ((ATYM c == BCPT) || (ATYM c == RBCPT))
+			AT c == RACPT;
+ 		where ((ATZP c == BCPT) || (ATZP c == RBCPT))
+			AT c == RACPT;
+		where ((ATZM c == BCPT) || (ATZM c == RBCPT))
+			AT c == RACPT;
+		}
+    }
+}
